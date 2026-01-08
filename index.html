@@ -3,33 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JLPT 隨身背 (修正版)</title>
-    
+    <title>JLPT 隨身背</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a90e2">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/330/330439.png">
-
     <style>
         :root { --primary: #4a90e2; --success: #2ecc71; --warning: #f1c40f; --bg: #f5f7fa; }
         body { font-family: sans-serif; background-color: var(--bg); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; user-select: none; }
         .header { margin-bottom: 15px; text-align: center; }
         select { padding: 10px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; margin: 5px; background: white; }
-        
-        #card {
-            background: white; width: 90%; max-width: 400px; height: 280px;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            text-align: center; cursor: pointer; position: relative;
-        }
-        
+        #card { background: white; width: 90%; max-width: 400px; height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; cursor: pointer; position: relative; }
         #starBtn { position: absolute; top: 15px; right: 15px; font-size: 1.8rem; color: #ccc; cursor: pointer; }
         #starBtn.active { color: var(--warning); }
-
         .reading { color: #888; font-size: 1.3rem; min-height: 1.5rem; margin-bottom: 10px; }
         .word { font-size: 3.2rem; font-weight: bold; color: #333; }
         .meaning { color: #e67e22; font-size: 1.5rem; min-height: 1.6rem; margin-top: 10px; }
         .hidden { opacity: 0; }
-        
         .btn-group { margin-top: 25px; display: flex; gap: 10px; }
         button { padding: 12px 25px; font-size: 1rem; border-radius: 50px; border: none; color: white; cursor: pointer; }
         .btn-next { background-color: var(--primary); }
@@ -39,7 +28,6 @@
     </style>
 </head>
 <body>
-
     <div class="header">
         <select id="levelSelect" onchange="filterData()">
             <option value="5">等級：N5</option>
@@ -50,19 +38,16 @@
         </select>
         <button class="btn-mode" id="modeBtn" onclick="toggleMode()">切換至「我的收藏」</button>
     </div>
-
     <div id="card" onclick="toggleAnswer()">
         <div id="starBtn" onclick="toggleFavorite(event)">★</div>
         <div id="reading" class="reading hidden">讀音</div>
         <div id="word" class="word">點擊開始</div>
         <div id="meaning" class="meaning hidden">意思</div>
     </div>
-
     <div class="btn-group">
         <button class="btn-speak" onclick="event.stopPropagation(); speak();">🔊 發音</button>
         <button class="btn-next" onclick="nextWord()">下一個</button>
     </div>
-
     <div class="stats" id="stats">已載入：0</div>
 
     <script src="data.js"></script>
@@ -73,76 +58,61 @@
         let isAnswerShown = false;
         let isOnlyFavMode = false;
 
-        // 1. 初始化檢查
         window.onload = () => {
             if (typeof allVocabData !== 'undefined') { 
-                console.log("資料庫載入成功，總數：", allVocabData.length);
                 filterData(); 
             } else {
-                document.getElementById('word').innerText = "找不到 data.js";
-                alert("錯誤：請檢查 data.js 是否存在於同目錄下，且變數名稱為 allVocabData");
+                document.getElementById('word').innerText = "找不到資料";
             }
         };
 
-        // 2. 核心篩選邏輯 (修正切換無效的問題)
+        // 註冊 Service Worker 並監聽更新
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // 發現新版本，強制重新整理頁面以套用更新
+                            window.location.reload();
+                        }
+                    };
+                };
+            });
+        }
+
         function filterData() {
             const selectedLv = document.getElementById('levelSelect').value.toString();
-            
             if (isOnlyFavMode) {
-                // 篩選收藏夾中包含該數字的單字 (支援 "4" 或 "N4")
-                currentPool = favorites.filter(item => 
-                    item.level.toString().includes(selectedLv)
-                );
+                currentPool = favorites.filter(item => item.level.toString().includes(selectedLv));
             } else {
-                // 從全部資料庫篩選
-                currentPool = allVocabData.filter(item => 
-                    item.level.toString().includes(selectedLv)
-                );
+                currentPool = allVocabData.filter(item => item.level.toString().includes(selectedLv));
             }
-
-            // 更新統計文字
-            const modeText = isOnlyFavMode ? '收藏中' : '題庫';
-            document.getElementById('stats').innerText = `${modeText}的 N${selectedLv} 單字：${currentPool.length}`;
-            
-            // 重置卡片並出題
+            document.getElementById('stats').innerText = `${isOnlyFavMode ? '收藏中' : '題庫'}的 N${selectedLv} 單字：${currentPool.length}`;
             nextWord();
         }
 
-        // 3. 模式切換 (全部 vs 收藏)
         function toggleMode() {
             isOnlyFavMode = !isOnlyFavMode;
-            const btn = document.getElementById('modeBtn');
-            btn.innerText = isOnlyFavMode ? "返回「全部單字」" : "切換至「我的收藏」";
-            btn.style.backgroundColor = isOnlyFavMode ? "#f39c12" : "#7f8c8d";
+            document.getElementById('modeBtn').innerText = isOnlyFavMode ? "返回「全部」" : "切換至「收藏」";
+            document.getElementById('modeBtn').style.backgroundColor = isOnlyFavMode ? "#f39c12" : "#7f8c8d";
             filterData();
         }
 
-        // 4. 隨機出題
         function nextWord() {
             if (currentPool.length === 0) {
-                document.getElementById('word').innerText = isOnlyFavMode ? "收藏夾是空的" : "此等級無資料";
-                document.getElementById('reading').innerText = "";
-                document.getElementById('meaning').innerText = "";
-                currentItem = null;
-                return;
+                document.getElementById('word').innerText = "無資料";
+                currentItem = null; return;
             }
-            
             isAnswerShown = false;
-            const randomIndex = Math.floor(Math.random() * currentPool.length);
-            currentItem = currentPool[randomIndex];
-            
+            currentItem = currentPool[Math.floor(Math.random() * currentPool.length)];
             document.getElementById('word').innerText = currentItem.word;
             document.getElementById('reading').innerText = currentItem.reading;
             document.getElementById('meaning').innerText = currentItem.meaning;
-            
-            // 更新星號
             const isFav = favorites.some(f => f.word === currentItem.word && f.reading === currentItem.reading);
             document.getElementById('starBtn').classList.toggle('active', isFav);
-
             document.getElementById('reading').classList.add('hidden');
             document.getElementById('meaning').classList.add('hidden');
-            
-            // 自動發音
             setTimeout(speak, 200);
         }
 
@@ -154,35 +124,21 @@
         }
 
         function toggleFavorite(e) {
-            e.stopPropagation();
-            if (!currentItem) return;
-            
+            e.stopPropagation(); if (!currentItem) return;
             const idx = favorites.findIndex(f => f.word === currentItem.word && f.reading === currentItem.reading);
-            if (idx > -1) {
-                favorites.splice(idx, 1);
-            } else {
-                favorites.push(currentItem);
-            }
-            
+            if (idx > -1) { favorites.splice(idx, 1); } else { favorites.push(currentItem); }
             localStorage.setItem('jlpt_favs', JSON.stringify(favorites));
             document.getElementById('starBtn').classList.toggle('active', idx === -1);
-            
-            // 如果在收藏模式，需即時刷新列表
             if (isOnlyFavMode) filterData();
         }
 
         function speak() {
-            if (!currentItem || !window.speechSynthesis) return;
+            if (!currentItem) return;
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(currentItem.reading || currentItem.word);
             utterance.lang = 'ja-JP';
             utterance.rate = 0.8;
             window.speechSynthesis.speak(utterance);
-        }
-
-        // PWA 註冊
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
         }
     </script>
 </body>
