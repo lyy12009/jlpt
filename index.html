@@ -3,52 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JLPT 隨身背</title>
+    <title>JLPT 專業版</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a90e2">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/330/330439.png">
     <style>
-        :root { --primary: #4a90e2; --success: #2ecc71; --warning: #f1c40f; --bg: #f5f7fa; }
-        body { font-family: sans-serif; background-color: var(--bg); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; user-select: none; }
-        .header { margin-bottom: 15px; text-align: center; }
-        select { padding: 10px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; margin: 5px; background: white; }
-        #card { background: white; width: 90%; max-width: 400px; height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; cursor: pointer; position: relative; }
-        #starBtn { position: absolute; top: 15px; right: 15px; font-size: 1.8rem; color: #ccc; cursor: pointer; }
+        :root { --primary: #4a90e2; --success: #2ecc71; --warning: #f1c40f; --danger: #e74c3c; --bg: #f5f7fa; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; user-select: none; }
+        
+        /* 頂部選單 */
+        .header { margin-bottom: 15px; text-align: center; width: 100%; max-width: 400px; }
+        select { padding: 10px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; background: white; width: 48%; }
+        .btn-mode { padding: 10px; font-size: 1rem; border-radius: 8px; border: none; background: #7f8c8d; color: white; width: 48%; cursor: pointer; }
+
+        /* 單字卡片 */
+        #card { 
+            background: white; width: 95%; max-width: 400px; min-height: 320px; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            text-align: center; cursor: pointer; position: relative; padding: 20px; box-sizing: border-box;
+        }
+        
+        #starBtn { position: absolute; top: 20px; right: 20px; font-size: 2rem; color: #eee; transition: 0.3s; }
         #starBtn.active { color: var(--warning); }
-        .reading { color: #888; font-size: 1.3rem; min-height: 1.5rem; margin-bottom: 10px; }
-        .word { font-size: 3.2rem; font-weight: bold; color: #333; }
-        .meaning { color: #e67e22; font-size: 1.5rem; min-height: 1.6rem; margin-top: 10px; }
-        .hidden { opacity: 0; }
-        .btn-group { margin-top: 25px; display: flex; gap: 10px; }
-        button { padding: 12px 25px; font-size: 1rem; border-radius: 50px; border: none; color: white; cursor: pointer; }
-        .btn-next { background-color: var(--primary); }
+
+        /* 字體樣式 */
+        .reading { color: #7f8c8d; font-size: 1.4rem; min-height: 1.6rem; margin-bottom: 5px; }
+        .word { font-size: 3.5rem; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        
+        .meaning-group { margin-top: 15px; width: 100%; }
+        .meaning-tw { color: #2c3e50; font-size: 1.6rem; font-weight: 600; margin-bottom: 5px; }
+        .meaning-en { color: #7f8c8d; font-size: 1.1rem; font-style: italic; }
+
+        /* 標籤樣式 (詞性、動詞資訊) */
+        .tag-group { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+        .tag { padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; color: white; }
+        .tag-pos { background-color: #3498db; } /* 詞性藍色 */
+        .tag-verb { background-color: #9b59b6; } /* 動詞紫色 */
+
+        .hidden { visibility: hidden; opacity: 0; }
+        
+        /* 按鈕區 */
+        .btn-group { margin-top: 30px; display: flex; gap: 15px; width: 100%; max-width: 400px; }
+        button.action-btn { flex: 1; padding: 15px; font-size: 1.1rem; border-radius: 50px; border: none; color: white; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .btn-speak { background-color: #9b59b6; }
-        .btn-mode { background-color: #7f8c8d; }
-        .stats { margin-top: 20px; font-size: 0.85rem; color: #777; }
+        .btn-next { background-color: var(--primary); }
+        
+        .stats { margin-top: 20px; font-size: 0.9rem; color: #95a5a6; }
     </style>
 </head>
 <body>
+
     <div class="header">
         <select id="levelSelect" onchange="filterData()">
             <option value="5">等級：N5</option>
-            <option value="4" selected>等級：N4</option>
-            <option value="3">等級：N3</option>
+            <option value="4">等級：N4</option>
+            <option value="3" selected>等級：N3</option>
             <option value="2">等級：N2</option>
             <option value="1">等級：N1</option>
         </select>
-        <button class="btn-mode" id="modeBtn" onclick="toggleMode()">切換至「我的收藏」</button>
+        <button class="btn-mode" id="modeBtn" onclick="toggleMode()">我的收藏</button>
     </div>
+
     <div id="card" onclick="toggleAnswer()">
         <div id="starBtn" onclick="toggleFavorite(event)">★</div>
         <div id="reading" class="reading hidden">讀音</div>
-        <div id="word" class="word">點擊開始</div>
-        <div id="meaning" class="meaning hidden">意思</div>
+        <div id="word" class="word">載入中...</div>
+        
+        <div id="answerArea" class="meaning-group hidden">
+            <div id="meaningTW" class="meaning-tw">中文意思</div>
+            <div id="meaningEN" class="meaning-en">English Meaning</div>
+            
+            <div class="tag-group">
+                <span id="tagPos" class="tag tag-pos">名詞</span>
+                <span id="tagVerb" class="tag tag-verb">自動 / V1</span>
+            </div>
+        </div>
     </div>
+
     <div class="btn-group">
-        <button class="btn-speak" onclick="event.stopPropagation(); speak();">🔊 發音</button>
-        <button class="btn-next" onclick="nextWord()">下一個</button>
+        <button class="action-btn btn-speak" onclick="event.stopPropagation(); speak();">🔊 發音</button>
+        <button class="action-btn btn-next" onclick="nextWord()">下一個</button>
     </div>
-    <div class="stats" id="stats">已載入：0</div>
+
+    <div class="stats" id="stats">題庫載入中...</div>
 
     <script src="data.js"></script>
     <script>
@@ -62,57 +100,73 @@
             if (typeof allVocabData !== 'undefined') { 
                 filterData(); 
             } else {
-                document.getElementById('word').innerText = "找不到資料";
+                document.getElementById('word').innerText = "找不到 data.js";
             }
         };
 
-        // 註冊 Service Worker 並監聽更新
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(reg => {
-                reg.onupdatefound = () => {
-                    const installingWorker = reg.installing;
-                    installingWorker.onstatechange = () => {
-                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // 發現新版本，強制重新整理頁面以套用更新
-                            window.location.reload();
-                        }
-                    };
-                };
-            });
-        }
-
+        // 核心篩選邏輯
         function filterData() {
-            const selectedLv = document.getElementById('levelSelect').value.toString();
-            if (isOnlyFavMode) {
-                currentPool = favorites.filter(item => item.level.toString().includes(selectedLv));
-            } else {
-                currentPool = allVocabData.filter(item => item.level.toString().includes(selectedLv));
-            }
-            document.getElementById('stats').innerText = `${isOnlyFavMode ? '收藏中' : '題庫'}的 N${selectedLv} 單字：${currentPool.length}`;
+            const lv = document.getElementById('levelSelect').value.toString();
+            const source = isOnlyFavMode ? favorites : allVocabData;
+            
+            currentPool = source.filter(item => item.level.toString().includes(lv));
+            
+            document.getElementById('stats').innerText = 
+                `${isOnlyFavMode ? '收藏' : 'N' + lv} 總計：${currentPool.length} 個單字`;
+            
             nextWord();
         }
 
         function toggleMode() {
             isOnlyFavMode = !isOnlyFavMode;
-            document.getElementById('modeBtn').innerText = isOnlyFavMode ? "返回「全部」" : "切換至「收藏」";
+            document.getElementById('modeBtn').innerText = isOnlyFavMode ? "全部單字" : "我的收藏";
             document.getElementById('modeBtn').style.backgroundColor = isOnlyFavMode ? "#f39c12" : "#7f8c8d";
             filterData();
         }
 
         function nextWord() {
             if (currentPool.length === 0) {
-                document.getElementById('word').innerText = "無資料";
+                document.getElementById('word').innerText = "空空如也";
+                document.getElementById('reading').classList.add('hidden');
+                document.getElementById('answerArea').classList.add('hidden');
                 currentItem = null; return;
             }
+            
             isAnswerShown = false;
             currentItem = currentPool[Math.floor(Math.random() * currentPool.length)];
+            
+            // 設定內容
             document.getElementById('word').innerText = currentItem.word;
             document.getElementById('reading').innerText = currentItem.reading;
-            document.getElementById('meaning').innerText = currentItem.meaning;
+            document.getElementById('meaningTW').innerText = currentItem.meaning_tw || "無中文翻譯";
+            document.getElementById('meaningEN').innerText = currentItem.meaning_en || currentItem.meaning || "";
+            
+            // 處理標籤
+            const tagPos = document.getElementById('tagPos');
+            const tagVerb = document.getElementById('tagVerb');
+            
+            if (currentItem.pos) {
+                tagPos.innerText = currentItem.pos;
+                tagPos.style.display = "inline-block";
+            } else {
+                tagPos.style.display = "none";
+            }
+
+            if (currentItem.verb_info) {
+                tagVerb.innerText = currentItem.verb_info;
+                tagVerb.style.display = "inline-block";
+            } else {
+                tagVerb.style.display = "none";
+            }
+
+            // 更新星號
             const isFav = favorites.some(f => f.word === currentItem.word && f.reading === currentItem.reading);
             document.getElementById('starBtn').classList.toggle('active', isFav);
+
+            // 隱藏答案
             document.getElementById('reading').classList.add('hidden');
-            document.getElementById('meaning').classList.add('hidden');
+            document.getElementById('answerArea').classList.add('hidden');
+            
             setTimeout(speak, 200);
         }
 
@@ -120,7 +174,7 @@
             if (!currentItem) return;
             isAnswerShown = !isAnswerShown;
             document.getElementById('reading').classList.toggle('hidden', !isAnswerShown);
-            document.getElementById('meaning').classList.toggle('hidden', !isAnswerShown);
+            document.getElementById('answerArea').classList.toggle('hidden', !isAnswerShown);
         }
 
         function toggleFavorite(e) {
@@ -139,6 +193,10 @@
             utterance.lang = 'ja-JP';
             utterance.rate = 0.8;
             window.speechSynthesis.speak(utterance);
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
         }
     </script>
 </body>
